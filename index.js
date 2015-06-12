@@ -1,26 +1,4 @@
-// CONFIG
-// ----------------------------------------------
-var events = [
-  {
-    name: "heartWare",
-    campaignUids: "us-22,us-23"
-  },
-  {
-    name: "someEvent",
-    campaignUids: "us-23"
-  },
-  {
-    name: "evennttt",
-    campaignUids: "us-22"
-  }
-];
-
-
-
-
-
-// IMAGE GENERATION STUFF
-// ----------------------------------------------
+var events = require('./config');
 var request = require('superagent');
 var gm = require('gm');
 var fs = require('fs');
@@ -65,8 +43,10 @@ function shuffle(array) {
 
 
 function generateSupporterImage(eventIndex) {
-  var campaignUids = events[eventIndex].campaignUids;
+  var campaignUids = events[eventIndex].campaignUids.join(',');
   var eventName = events[eventIndex].name;
+
+
 
   // Get the JSON
   request.get("https://everydayhero.com/api/v2/pages/?campaign_id="+campaignUids+"&type=individual&limit=300&page=1").end(function(err, data) {
@@ -214,8 +194,7 @@ fs.exists('eventToProcess.txt', function (exists) {
 
 
 
-// CLEANUP: Remove any images from the server that are no longer in the events config
-
+// CLEANUP SCRIPT: Remove any images from the server that are no longer in the events config
 // For each file in the img dir, if it's not in the events obj (defined at the top of this file in the config) - delete it
 fs.readdir('img', function (err, files) {
   if (err) {
