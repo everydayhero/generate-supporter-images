@@ -1,0 +1,16 @@
+{
+  "name": "generate-supporter-images",
+  "version": "1.0.0",
+  "description": "Generates a wall of supporter images for use in the Event Footprint templates.",
+  "main": "index.js",
+  "dependencies": {
+    "gm": "^1.18.1",
+    "superagent": "^1.2.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "node index.js"
+  },
+  "author": "",
+  "license": "ISC"
+}
