@@ -4,6 +4,8 @@ var gm = require('gm');
 var fs = require('fs');
 
 
+console.log(process.env.FOO);
+
 
 function eliminateDuplicates(arr) {
   var i;
@@ -41,12 +43,18 @@ function shuffle(array) {
 }
 
 
-
+var startTime = '';
+var endTime = '';
 function generateSupporterImage(eventIndex) {
   var campaignUids = events[eventIndex].campaignUids.join(',');
   var eventName = events[eventIndex].name;
 
+  startTime = new Date();
+  console.log('------------------------------------------------------------------------------');
+  console.log(eventName+' | START TILE GENERATION ('+campaignUids+') | '+startTime.toLocaleString());
 
+
+  console.log(eventName+' | Getting images from the API... | '+new Date().toLocaleString());
 
   // Get the JSON
   request.get("https://everydayhero.com/api/v2/pages/?campaign_id="+campaignUids+"&type=individual&limit=300&page=1").end(function(err, data) {
@@ -77,7 +85,8 @@ function generateSupporterImage(eventIndex) {
       }
 
     } else {
-      console.log('API ERROR!!!111oneoneone (Event Name: '+eventName+')');
+      console.log(eventName+' | API ERROR: '+err+' | '+new Date().toLocaleString());
+      return startProcess();
     }
   });
 }
@@ -93,22 +102,18 @@ function doImageGeneration(images, eventIndex) {
   // Randomise the order
   images = shuffle(images);
 
+  console.log(eventName+' | Success! Total images: '+images.length+' | '+new Date().toLocaleString());
 
-  // Count the images, are there more than 80?
   if (images.length > 80) {
     images = images.slice(0,80);
+    console.log(eventName+' | Generating random 80 image tile and saving to server.. | '+new Date().toLocaleString());
   } else if (images.length > 40) { // Count the images, are there more than 40?
     images = images.slice(0,40);
+    console.log(eventName+' | Generating random 40 image tile and saving to server... | '+new Date().toLocaleString());
   } else { // If there's less than 40
-    // Increment the eventToProcess.txt
-    fs.writeFile("eventToProcess.txt", (parseInt(eventIndex) + 1), function(err) {
-      if (err) {
-        return console.log(err);
-      }
-    });
-
     // Done
-    return;
+    console.log(eventName+' | Less than 40 images, so we no tile will be generated :( | '+new Date().toLocaleString());
+    return startProcess();
   }
 
 
@@ -120,6 +125,7 @@ function doImageGeneration(images, eventIndex) {
 
   var image = gm();
   for (var i = 0; i < images.length; i++) {
+    image.in('-modulate', '80,30')
     image.in('-page', '+'+(col * imageWidth)+'+'+(row * imageHeight))
     image.in(images[i].replace('https:', 'http:'))
     image.in('-resize', (imageWidth+1)+'x'+(imageHeight+1))
@@ -131,90 +137,67 @@ function doImageGeneration(images, eventIndex) {
     }
   }
   image.mosaic();
+
   image.write('img/'+eventName+'.jpg', function (err) {
     if (err) {
-      console.log(err);
-    } else { // If it wrote the file successfully
-      // Increment the eventToProcess.txt
-      fs.writeFile("eventToProcess.txt", (parseInt(eventIndex) + 1), function(err) {
-        if (err) {
-          return console.log(err);
-        }
-      });
+      console.log(eventName+' | WRITE ERROR: '+err+' | '+new Date().toLocaleString());
+    } else {
+      console.log(eventName+' | SUCCESS! | '+new Date().toLocaleString());
+
+      endTime = new Date();
+      console.log(eventName+' | END TILE GENERATION | Total time: '+((endTime.getTime() - startTime.getTime()) / 1000)+'s | '+new Date().toLocaleString());
     }
+
+    startProcess();
   })
 }
 
 
 
-// Function to open the eventToProcess.txt file and start the image generation
+// Function to start the image generation
 var eventToProcess = 0;
 function startProcess() {
+  // If this index doesn't exist, go back to the beginning
+  if (!events[eventToProcess]) {
+    eventToProcess = 0;
 
-  fs.readFile('eventToProcess.txt', 'utf8', function (err, data) {
+    //console.log('------------------------------------------------------------------------------');
+    //console.log('ALL TILES IN CONFIG DONE. WAITING 1 HOUR TO REPEAT.');
+    //setTimeout(actuallyStartProcess, 3600000); // We've looped back to the beginning, so wait an hour
+  } else {
+    actuallyStartProcess();
+  }
+}
+
+function actuallyStartProcess() {
+  generateSupporterImage(eventToProcess);
+  eventToProcess++;
+
+  // CLEANUP SCRIPT: Remove any images from the server that are no longer in the events config
+  // For each file in the img dir, if it's not in the events obj (defined at the top of this file in the config) - delete it
+  fs.readdir('img', function (err, files) {
     if (err) {
       console.log(err);
     } else {
-      eventToProcess = data.toString();
-
-      // If this index doesn't exist, go back to the beginning
-      if (!events[eventToProcess]) {
-        fs.writeFile("eventToProcess.txt", 0, function(err) {
-          if (err) {
-            console.log(err);
-          } else {
-            eventToProcess = 0;
-            generateSupporterImage(eventToProcess);
+      for (var key in files) {
+        var deleteFile = true;
+        for (var key2 in events) {
+          if (events[key2].name === files[key].replace('.jpg', '')) {
+            deleteFile = false;
           }
-        });
-      } else {
-        generateSupporterImage(eventToProcess);
+        }
+
+        if (deleteFile === true) {
+          fs.unlink('img/'+files[key], function (err) {
+            if (err) {
+              console.log(err);
+            }
+          });
+        }
       }
     }
   });
 }
 
 
-
-// Does the eventToProcess.txt file exist? If not, make it.
-// Also...start the process.
-fs.exists('eventToProcess.txt', function (exists) {
-  if (!exists) {
-    fs.writeFile("eventToProcess.txt", 0, function(err) {
-      if (err) {
-        console.log(err);
-      } else {
-        startProcess();
-      }
-    });
-  } else {
-    startProcess();
-  }
-});
-
-
-
-// CLEANUP SCRIPT: Remove any images from the server that are no longer in the events config
-// For each file in the img dir, if it's not in the events obj (defined at the top of this file in the config) - delete it
-fs.readdir('img', function (err, files) {
-  if (err) {
-    console.log(err);
-  } else {
-    for (var key in files) {
-      var deleteFile = true;
-      for (var key2 in events) {
-        if (events[key2].name === files[key].replace('.jpg', '')) {
-          deleteFile = false;
-        }
-      }
-
-      if (deleteFile === true) {
-        fs.unlink('img/'+files[key], function (err) {
-          if (err) {
-            console.log(err);
-          }
-        });
-      }
-    }
-  }
-});
+startProcess(); // Start the script

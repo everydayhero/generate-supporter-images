@@ -1,21 +1,8 @@
 module.exports = [
   {
-    name: "heartWare",
+    name: "la-marathon",
     campaignUids: [
-      "us-22",
-      "us-23"
-    ]
-  },
-  {
-    name: "someEvent",
-    campaignUids: [
-      "us-23"
-    ]
-  },
-  {
-    name: "evennttt",
-    campaignUids: [
-      "us-22"
+      "64ebc330-501e-4e5f-98ba-54bb09e7a158"
     ]
   }
 ];
