@@ -4,7 +4,7 @@ var gm = require('gm');
 var fs = require('fs');
 
 
-console.log(process.env.FOO);
+console.log(process.env.FOO+'2');
 
 
 function eliminateDuplicates(arr) {
