@@ -10,4 +10,7 @@ AWS_ACCESS_KEY_ID=your_id_here AWS_SECRET_ACCESS_KEY=your_key_here node index.js
 ```
 
 ## How to configure it
-Configuration is done via `config.js`. After editing, this file needs to be uploaded to `edh-widgets/supporter-images/config.js`
+Configuration is done via `config.js`. After editing, this file needs to be uploaded to:
+```
+edh-widgets/supporter-images/config.js
+```
