@@ -4,6 +4,7 @@ var request = require('superagent');
 var gm = require('gm');
 var fs = require('fs');
 var AWS = require('aws-sdk');
+var s3Stream = require('s3-upload-stream')(new AWS.S3());
 
 
 
@@ -106,10 +107,10 @@ function doImageGeneration(images, eventIndex) {
 
   if (images.length > 80) {
     images = images.slice(0,80);
-    console.log(eventName+' | Generating random 80 image tile and saving to server.. | '+new Date().toLocaleString());
+    console.log(eventName+' | Generating random 80 supporter image tile and saving to server.. | '+new Date().toLocaleString());
   } else if (images.length > 40) { // Count the images, are there more than 40?
     images = images.slice(0,40);
-    console.log(eventName+' | Generating random 40 image tile and saving to server... | '+new Date().toLocaleString());
+    console.log(eventName+' | Generating random 40 supporter image tile and saving to server... | '+new Date().toLocaleString());
   } else { // If there's less than 40
     // Done
     console.log(eventName+' | Less than 40 images, so we no tile will be generated :( | '+new Date().toLocaleString());
@@ -125,10 +126,10 @@ function doImageGeneration(images, eventIndex) {
 
   var image = gm();
   for (var i = 0; i < images.length; i++) {
-    image.in('-modulate', '80,30')
-    image.in('-page', '+'+(col * imageWidth)+'+'+(row * imageHeight))
-    image.in(images[i].replace('https:', 'http:'))
-    image.in('-resize', (imageWidth+1)+'x'+(imageHeight+1))
+    image.in('-modulate', '80,30');
+    image.in('-page', '+'+(col * imageWidth)+'+'+(row * imageHeight));
+    image.in(images[i].replace('https:', 'http:'));
+    image.in('-resize', (imageWidth+1)+'x'+(imageHeight+1));
 
     col++;
     if (col >= 10) {
@@ -139,34 +140,43 @@ function doImageGeneration(images, eventIndex) {
   image.mosaic();
 
 
+
+
+
+  // This uploads the stream of the image to S3. That works fine, but the image it uploads is corrupted / broken / incomplete?
+  // ------------------------------------------------------------------------------------------------------------
   image.stream(function(err, stdout, stderr) {
     var buf = new Buffer(0);
     stdout.on('data', function(data) {
       buf = Buffer.concat([buf, data]);
     });
 
-    stdout.on('end', function(data) {
+    stdout.on('end', function() {
       var data = {
         Bucket: "edh-widgets/supporter-tiles/img",
         Key: eventName+".jpg",
         Body: buf,
-        ContentType: mime.lookup(eventName+".jpg")
+        ACL: 'public-read',
+        ContentType: 'image/jpeg',
+        ContentLength: stdout.bytesRead
       };
       S3.putObject(data, function(err, res) {
         if (err) {
          console.log(err);
         } else {
-          console.log("done"+res);
+          console.log(res);
         }
       });
     });
 
-
-
-
   });
+  // ------------------------------------------------------------------------------------------------------------
 
 
+
+
+  // This alternative example saves the image locally. This works fine.
+  // -------------------------------------------------------
   // image.write('img/'+eventName+'.jpg', function (err) {
   //   if (err) {
   //     console.log(eventName+' | WRITE ERROR: '+err+' | '+new Date().toLocaleString());
@@ -178,16 +188,9 @@ function doImageGeneration(images, eventIndex) {
   //   }
 
   //   startProcess();
-  // })
-
-  // var uploadParams = {Bucket: 'edh-widgets/supporter-tiles/img/', Key: 'text.txt', Body: 'Hello!'}
-  // S3.upload(uploadParams, function(err, data) {
-  //   if (err) {
-  //     console.log("Error uploading data: ", err);
-  //   } else {
-  //     console.log("Successfully uploaded data to myBucket/myKey");
-  //   }
   // });
+  // -------------------------------------------------------
+
 
 
 

@@ -13,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "aws-sdk": "^2.1.43"
+    "aws-sdk": "^2.1.43",
+    "s3-upload-stream": "^1.0.7"
   }
 }
