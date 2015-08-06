@@ -7,10 +7,12 @@
     "gm": "^1.18.1",
     "superagent": "^1.2.0"
   },
-  "devDependencies": {},
   "scripts": {
     "test": "node index.js"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "aws-sdk": "^2.1.43"
+  }
 }

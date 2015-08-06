@@ -1,12 +1,14 @@
-var events = require('./config');
+// Include modules
+// ---------------------------------------------------------------------------
 var request = require('superagent');
 var gm = require('gm');
 var fs = require('fs');
+var AWS = require('aws-sdk');
 
 
-//console.log(process.env.FOO);
 
-
+// Define functions
+// ---------------------------------------------------------------------------
 function eliminateDuplicates(arr) {
   var i;
   var len=arr.length;
@@ -21,7 +23,6 @@ function eliminateDuplicates(arr) {
   }
   return out;
 }
-
 
 
 function shuffle(array) {
@@ -92,7 +93,6 @@ function generateSupporterImage(eventIndex) {
 }
 
 
-
 function doImageGeneration(images, eventIndex) {
   var eventName = events[eventIndex].name;
 
@@ -138,20 +138,61 @@ function doImageGeneration(images, eventIndex) {
   }
   image.mosaic();
 
-  image.write('img/'+eventName+'.jpg', function (err) {
-    if (err) {
-      console.log(eventName+' | WRITE ERROR: '+err+' | '+new Date().toLocaleString());
-    } else {
-      console.log(eventName+' | SUCCESS! | '+new Date().toLocaleString());
 
-      endTime = new Date();
-      console.log(eventName+' | END TILE GENERATION | Total time: '+((endTime.getTime() - startTime.getTime()) / 1000)+'s | '+new Date().toLocaleString());
-    }
+  image.stream(function(err, stdout, stderr) {
+    var buf = new Buffer(0);
+    stdout.on('data', function(data) {
+      buf = Buffer.concat([buf, data]);
+    });
 
-    startProcess();
-  })
+    stdout.on('end', function(data) {
+      var data = {
+        Bucket: "edh-widgets/supporter-tiles/img",
+        Key: eventName+".jpg",
+        Body: buf,
+        ContentType: mime.lookup(eventName+".jpg")
+      };
+      S3.putObject(data, function(err, res) {
+        if (err) {
+         console.log(err);
+        } else {
+          console.log("done"+res);
+        }
+      });
+    });
+
+
+
+
+  });
+
+
+  // image.write('img/'+eventName+'.jpg', function (err) {
+  //   if (err) {
+  //     console.log(eventName+' | WRITE ERROR: '+err+' | '+new Date().toLocaleString());
+  //   } else {
+  //     console.log(eventName+' | SUCCESS! | '+new Date().toLocaleString());
+
+  //     endTime = new Date();
+  //     console.log(eventName+' | END TILE GENERATION | Total time: '+((endTime.getTime() - startTime.getTime()) / 1000)+'s | '+new Date().toLocaleString());
+  //   }
+
+  //   startProcess();
+  // })
+
+  // var uploadParams = {Bucket: 'edh-widgets/supporter-tiles/img/', Key: 'text.txt', Body: 'Hello!'}
+  // S3.upload(uploadParams, function(err, data) {
+  //   if (err) {
+  //     console.log("Error uploading data: ", err);
+  //   } else {
+  //     console.log("Successfully uploaded data to myBucket/myKey");
+  //   }
+  // });
+
+
+
+
 }
-
 
 
 // Function to start the image generation
@@ -160,44 +201,32 @@ function startProcess() {
   // If this index doesn't exist, go back to the beginning
   if (!events[eventToProcess]) {
     eventToProcess = 0;
-
-    //console.log('------------------------------------------------------------------------------');
-    //console.log('ALL TILES IN CONFIG DONE. WAITING 1 HOUR TO REPEAT.');
-    //setTimeout(actuallyStartProcess, 3600000); // We've looped back to the beginning, so wait an hour
   } else {
-    actuallyStartProcess();
+    generateSupporterImage(eventToProcess);
+    eventToProcess++;
   }
 }
 
-function actuallyStartProcess() {
-  generateSupporterImage(eventToProcess);
-  eventToProcess++;
-
-  // CLEANUP SCRIPT: Remove any images from the server that are no longer in the events config
-  // For each file in the img dir, if it's not in the events obj (defined at the top of this file in the config) - delete it
-  fs.readdir('img', function (err, files) {
-    if (err) {
-      console.log(err);
-    } else {
-      for (var key in files) {
-        var deleteFile = true;
-        for (var key2 in events) {
-          if (events[key2].name === files[key].replace('.jpg', '')) {
-            deleteFile = false;
-          }
-        }
-
-        if (deleteFile === true) {
-          fs.unlink('img/'+files[key], function (err) {
-            if (err) {
-              console.log(err);
-            }
-          });
-        }
-      }
-    }
-  });
-}
 
 
-startProcess(); // Start the script
+// Get config from S3 and start script
+// ---------------------------------------------------------------------------
+
+console.log('------------------------------------------------------------------------------');
+console.log('Get config from S3... (edh-widgets/supporter-tiles/config.js) | '+new Date().toLocaleString());
+
+var events = {};
+var S3 = new AWS.S3();
+var params = {Bucket: 'edh-widgets/supporter-tiles', Key: 'config.js'}
+S3.getObject(params, function(err, data) {
+  if (err) {
+    console.log('CONFIG FAILED TO LOAD | '+err+' | '+new Date().toLocaleString());
+  }
+  else {
+    console.log('Success! | '+new Date().toLocaleString());
+    var config = data.Body.toString();
+    events = JSON.parse(config).events;
+
+    startProcess(); // Start the script
+  }
+});
