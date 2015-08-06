@@ -143,7 +143,8 @@ function doImageGeneration(images, eventIndex) {
 
 
 
-  // This uploads the stream of the image to S3. That works fine, but the image it uploads is corrupted / broken / incomplete?
+  // This uploads the stream of the image to S3 using a buffer. That works fine, but the image it uploads is too large and corrupted / broken / incomplete?
+  // Surely the fix should be obvious...apparently not.
   // ------------------------------------------------------------------------------------------------------------
   image.stream(function(err, stdout, stderr) {
     var buf = new Buffer(0);
@@ -158,7 +159,7 @@ function doImageGeneration(images, eventIndex) {
         Body: buf,
         ACL: 'public-read',
         ContentType: 'image/jpeg',
-        ContentLength: stdout.bytesRead
+        ContentLength: stdout.bytesRead // this is required for amazon, so the internet tells me
       };
       S3.putObject(data, function(err, res) {
         if (err) {
@@ -171,6 +172,7 @@ function doImageGeneration(images, eventIndex) {
 
   });
   // ------------------------------------------------------------------------------------------------------------
+
 
 
 
