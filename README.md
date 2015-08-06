@@ -1,5 +1,5 @@
 # Generate Supporter Images
-Generates supporter images and uploads them to S3 for use in Event Footprints (see repository "event-footprint")
+Generates supporter image tiles and uploads them to S3 for use in Event Footprints (see repository "event-footprint") and various other projects.
 
 ## How it works
 This script is written with node js. It is called every 24 hours via Heroku (which passes in AWS credentials as environment variables). It then generates all required supporter images and uploads them to `https://s3.amazonaws.com/edh-widgets/supporter-tiles/img/clientName.jpg`
